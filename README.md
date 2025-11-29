@@ -305,3 +305,25 @@ Based on Discord's brand colors:
 - ICMP ping may require administrator privileges on some systems
 - Some firewalls may block ICMP or specific TCP ports
 - Log archiving creates temporary disk usage spike during compression
+
+---
+
+## 🤝 Contributing
+
+Contributions welcome! Please open an issue or submit a pull request.
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+<div align="center">
+
+**[Report Bug](../../issues)** · **[Request Feature](../../issues)** · **[Documentation](../../wiki)**
+
+Made with ❤️ for Windows automation
+
+</div>
