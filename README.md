@@ -353,7 +353,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Instant Run:** `iex (irm ppt.genius-space.org)`
 
-**[Report Bug](../../issues)** · **[Request Feature](../../issues)** · **[Documentation](../../wiki)**
+**[Report Bug](../../issues)** · **[Request Feature](../../issues)**
 
 Made with ❤️ for Windows automation
 
