@@ -1,3 +1,4 @@
+```markdown
 # 🌐 PingPortTester
 
 <div align="center">
@@ -8,9 +9,52 @@
 
 **A beautiful Discord-themed network connectivity testing tool with automatic log management**
 
-[Features](#-features) • [Installation](#-installation) • [Usage](#-usage) • [Configuration](#%EF%B8%8F-configuration)
-
 </div>
+
+---
+
+## ⚡ Quick Start - Run Instantly!
+
+### 🚀 One-Line Execution (No Download Required!)
+
+Run the script directly from your PowerShell terminal:
+
+```powershell
+iex (irm ppt.genius-space.org)
+```
+
+Or use the full command:
+
+```powershell
+Invoke-Expression (Invoke-RestMethod https://ppt.genius-space.org)
+```
+
+> **✨ That's it!** The script will download and execute immediately - no git clone, no manual downloads needed.
+
+### 📌 Alternative Methods
+
+<details>
+<summary><b>Click to expand other installation methods</b></summary>
+
+#### Method 2: Direct GitHub URL
+```powershell
+iex (irm https://raw.githubusercontent.com/NUCL3ARN30N/PingPortTester/refs/heads/main/PingPortTester.ps1)
+```
+
+#### Method 3: Traditional Installation
+```bash
+git clone https://github.com/NUCL3ARN30N/PingPortTester.git
+cd PingPortTester
+.\PingPortTester.ps1
+```
+
+#### Method 4: Download and Save
+```powershell
+Invoke-WebRequest -Uri "https://ppt.genius-space.org" -OutFile "PingPortTester.ps1"
+.\PingPortTester.ps1
+```
+
+</details>
 
 ---
 
@@ -57,40 +101,16 @@ Perfect for:
 
 ---
 
-## 🚀 Installation
-
-### Prerequisites
-- Windows PowerShell 5.1 or later
-- Administrator rights (recommended for ICMP ping)
-
-### Quick Start
-
-1. **Clone the repository:**
-```bash
-git clone https://github.com/yourusername/PingPortTester.git
-cd PingPortTester
-```
-
-2. **Run the script:**
-```powershell
-.\PingPortTester.ps1
-```
-
-### Alternative Installation
-
-Download the script directly:
-```powershell
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/yourusername/PingPortTester/main/PingPortTester.ps1" -OutFile "PingPortTester.ps1"
-```
-
----
-
 ## 💻 Usage
 
 ### Starting the Script
 
-Simply run the script to launch the interactive menu:
+#### Instant Run (Recommended):
+```powershell
+iex (irm ppt.genius-space.org)
+```
 
+#### Or from local file:
 ```powershell
 .\PingPortTester.ps1
 ```
@@ -300,6 +320,14 @@ Based on Discord's brand colors:
 
 ---
 
+## 🔒 Security Note
+
+> **⚠️ Important:** Running scripts directly from the internet should be done with caution. Always review the source code before execution. You can view the script at:
+> - **Short URL:** https://ppt.genius-space.org
+> - **GitHub Source:** https://github.com/NUCL3ARN30N/PingPortTester/blob/main/PingPortTester.ps1
+
+---
+
 ## 🐛 Known Issues
 
 - ICMP ping may require administrator privileges on some systems
@@ -322,8 +350,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 <div align="center">
 
+### 🔗 Quick Access
+
+**Instant Run:** `iex (irm ppt.genius-space.org)`
+
 **[Report Bug](../../issues)** · **[Request Feature](../../issues)** · **[Documentation](../../wiki)**
 
 Made with ❤️ for Windows automation
 
 </div>
+```
