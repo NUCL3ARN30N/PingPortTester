@@ -1,4 +1,4 @@
-# 🌐 PingPortTester
+# PingPortTester
 
 <div align="center">
 
@@ -12,9 +12,9 @@
 
 ---
 
-## ⚡ Quick Start - Run Instantly!
+## Quick Start - Run Instantly!
 
-### 🚀 One-Line Execution (No Download Required!)
+### One-Line Execution (No Download Required!)
 
 Run the script directly from your PowerShell terminal:
 
@@ -28,9 +28,9 @@ Or use the full command:
 Invoke-Expression (Invoke-RestMethod https://ppt.genius-space.org)
 ```
 
-> **✨ That's it!** The script will download and execute immediately - no git clone, no manual downloads needed.
+> **That's it!** The script will download and execute immediately - no git clone, no manual downloads needed.
 
-### 📌 Alternative Methods
+### Alternative Methods
 
 <details>
 <summary><b>Click to expand other installation methods</b></summary>
@@ -57,42 +57,35 @@ Invoke-WebRequest -Uri "https://ppt.genius-space.org" -OutFile "PingPortTester.p
 
 ---
 
-## 📋 Overview
+## Overview
 
 PingPortTester is an interactive PowerShell script that monitors network connectivity using either ICMP ping or TCP port testing. It features a beautiful Discord-inspired terminal UI, real-time statistics, and intelligent log management with automatic archiving.
 
 Perfect for:
-- 🔍 Network troubleshooting and diagnostics
-- 📊 Monitoring server/service uptime
-- 🚨 Detecting network connectivity issues
-- 📈 Collecting connectivity statistics over time
+- Network troubleshooting and diagnostics
+- Monitoring server/service uptime
+- Detecting network connectivity issues
+- Collecting connectivity statistics over time
 
 ---
 
-## ✨ Features
+## Features
 
-### 🎨 Beautiful UI
-- **Discord-themed color scheme** - Clean, modern terminal interface
-- **Interactive menus** - Easy-to-use mode selection and configuration
-- **Real-time statistics** - Live success rate and test counters
-- **Visual indicators** - Emoji-enhanced status messages (✅ ❌ 📊 ⚠️)
-- **Color-coded feedback** - Green for success, red for errors, yellow for warnings
-
-### 🔧 Powerful Testing
+### Powerful Testing
 - **Dual Testing Modes:**
-  - 🔔 **ICMP Ping Mode** - Standard network layer connectivity testing
-  - 🔌 **TCP Port Test Mode** - Application-level port availability checking
+  - **ICMP Ping Mode** - Standard network layer connectivity testing
+  - **TCP Port Test Mode** - Application-level port availability checking
 - **Configurable intervals** - Set custom test frequencies
 - **Continuous monitoring** - Runs until manually stopped (Ctrl+C)
 - **Detailed logging** - Timestamps and failure tracking
 
-### 📁 Smart Log Management
+### Smart Log Management
 - **Automatic archiving** - Logs auto-compress when reaching 20MB
 - **Space-efficient** - Only logs failures to save storage
 - **Timestamped archives** - Easy identification with `YYYYMMDD_HHMMSS` format
 - **Continuous operation** - New log starts seamlessly after archiving
 
-### 📊 Statistics & Reporting
+### Statistics & Reporting
 - **Real-time metrics** - Total tests, success count, failure count
 - **Success rate calculation** - Percentage-based performance indicator
 - **Color-coded rates** - Visual feedback (Green >95%, Yellow >80%, Red <80%)
@@ -100,7 +93,7 @@ Perfect for:
 
 ---
 
-## 💻 Usage
+## Usage
 
 ### Starting the Script
 
@@ -218,7 +211,7 @@ Press `Ctrl+C` to stop monitoring. A reminder is displayed every 10 tests.
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
 ### Modifiable Variables
 
@@ -253,7 +246,7 @@ NetworkTest_20250115_142345.zip
 
 ---
 
-## 🎯 Use Cases
+## Use Cases
 
 ### 1. Monitor Web Server Uptime
 ```powershell
@@ -292,7 +285,7 @@ Interval: 10 seconds
 
 ---
 
-## 🛠️ Technical Details
+## Technical Details
 
 ### Testing Methods
 
@@ -319,15 +312,15 @@ Based on Discord's brand colors:
 
 ---
 
-## 🔒 Security Note
+## Security Note
 
-> **⚠️ Important:** Running scripts directly from the internet should be done with caution. Always review the source code before execution. You can view the script at:
+> **Important:** Running scripts directly from the internet should be done with caution. Always review the source code before execution. You can view the script at:
 > - **Short URL:** https://ppt.genius-space.org
 > - **GitHub Source:** https://github.com/NUCL3ARN30N/PingPortTester/blob/main/PingPortTester.ps1
 
 ---
 
-## 🐛 Known Issues
+## Known Issues
 
 - ICMP ping may require administrator privileges on some systems
 - Some firewalls may block ICMP or specific TCP ports
@@ -335,7 +328,7 @@ Based on Discord's brand colors:
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Contributions welcome! Please open an issue or submit a pull request.
 
@@ -349,12 +342,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 <div align="center">
 
-### 🔗 Quick Access
+### Quick Access
 
 **Instant Run:** `iex (irm ppt.genius-space.org)`
 
 **[Report Bug](../../issues)** · **[Request Feature](../../issues)**
-
-Made with ❤️ for Windows automation
 
 </div>
