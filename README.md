@@ -100,9 +100,6 @@ Shows your public IP address with detailed location and network information:
 | 443 | HTTPS |
 | 465 | SMTPS |
 | 587 | SMTP (submission) |
-| 3306 | MySQL |
-| 3389 | RDP |
-| 5432 | PostgreSQL |
 
 ## Logging
 
