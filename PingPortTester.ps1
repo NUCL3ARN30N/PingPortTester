@@ -615,7 +615,6 @@ function Get-PublicIPInfo {
     
     Write-LogEntry -Message "Public IP check started" -FilePath $LogFile
     
-    # Get IP from multiple services for verification
     $ipServices = @(
         @{Name="ipify"; Url="https://api.ipify.org?format=json"; JsonPath="ip"},
         @{Name="ipinfo.io"; Url="https://ipinfo.io/json"; JsonPath="ip"},
@@ -647,7 +646,6 @@ function Get-PublicIPInfo {
     Write-Host "  $publicIP" -ForegroundColor $Green
     Write-Host ""
     
-    # Get detailed info from ipinfo.io
     try {
         $details = Invoke-RestMethod -Uri "https://ipinfo.io/$publicIP/json" -TimeoutSec 10 -ErrorAction Stop
         
@@ -677,7 +675,6 @@ function Get-PublicIPInfo {
         Write-LogEntry -Message "Public IP: $publicIP (no details)" -FilePath $LogFile
     }
     
-    # Additional: Check for IPv6
     Write-Host ""
     Show-Separator
     Write-Host "  IPv6 Check:" -ForegroundColor $Cyan
@@ -734,12 +731,14 @@ function Show-Menu {
     Write-Host "  10 - SMTP Email Test      Send test email via SMTP" -ForegroundColor $White
     Write-Host "  11 - Public IP Info       Show public IP and location" -ForegroundColor $White
     Write-Host ""
+    Write-Host "  0  - Exit" -ForegroundColor $Red
+    Write-Host ""
     Show-Separator
     Write-Host ""
     
     do {
-        $choice = Read-Host "  > Enter choice (1-11)"
-    } while ($choice -notmatch '^([1-9]|1[01])$')
+        $choice = Read-Host "  > Enter choice (0-11)"
+    } while ($choice -notmatch '^([0-9]|1[01])$')
     
     return $choice
 }
@@ -748,214 +747,219 @@ function Show-Menu {
 # MAIN
 # ============================================================================
 
-$mode = Show-Menu
-
 if (-not (Test-Path $LogPath)) {
     New-Item -Path $LogPath -ItemType File -Force | Out-Null
 }
 
-switch ($mode) {
-    '1' {
+while ($true) {
+    $mode = Show-Menu
+    
+    if ($mode -eq '0') {
         Write-Host ""
-        $target = Read-Host "  > Target host"
-        $interval = Read-Host "  > Interval seconds (default: 5)"
-        if ([string]::IsNullOrWhiteSpace($interval)) { $interval = 5 }
-        
-        Clear-Host
-        Show-Header "PING MONITORING - $target"
-        Write-Host "  Press Ctrl+C to stop" -ForegroundColor $Yellow
+        Write-Host "  [SAVED] Log: $LogPath" -ForegroundColor $Cyan
+        Write-Host "  [BYE] Thank you for using Network Testing Tool!" -ForegroundColor $Magenta
         Write-Host ""
-        
-        Write-LogEntry -Message "Ping monitoring started: $target" -FilePath $LogPath
-        $total = 0; $failed = 0
-        
-        try {
-            while ($true) {
-                $total++
-                Test-LogSize -LogFilePath $LogPath
-                if (-not (Test-Ping -Target $target -LogFile $LogPath)) { $failed++ }
-                Show-Stats -Total $total -Failed $failed -AvgLatency 0 -ShowLatency $false
-                Write-Host ""
-                Start-Sleep -Seconds $interval
+        break
+    }
+
+    switch ($mode) {
+        '1' {
+            Write-Host ""
+            $target = Read-Host "  > Target host"
+            $interval = Read-Host "  > Interval seconds (default: 5)"
+            if ([string]::IsNullOrWhiteSpace($interval)) { $interval = 5 }
+            
+            Clear-Host
+            Show-Header "PING MONITORING - $target"
+            Write-Host "  Press Ctrl+C to stop and return to menu" -ForegroundColor $Yellow
+            Write-Host ""
+            
+            Write-LogEntry -Message "Ping monitoring started: $target" -FilePath $LogPath
+            $total = 0; $failed = 0
+            
+            try {
+                while ($true) {
+                    $total++
+                    Test-LogSize -LogFilePath $LogPath
+                    if (-not (Test-Ping -Target $target -LogFile $LogPath)) { $failed++ }
+                    Show-Stats -Total $total -Failed $failed -AvgLatency 0 -ShowLatency $false
+                    Write-Host ""
+                    Start-Sleep -Seconds $interval
+                }
+            } catch {
+                Write-LogEntry -Message "Ping monitoring stopped" -FilePath $LogPath
             }
-        } finally {
-            Write-LogEntry -Message "Ping monitoring stopped" -FilePath $LogPath
         }
-    }
-    
-    '2' {
-        Write-Host ""
-        $target = Read-Host "  > Target host"
-        Write-Host "  Common: HTTP(80) HTTPS(443) SSH(22) RDP(3389)" -ForegroundColor $Gray
-        $port = [int](Read-Host "  > Port")
-        $interval = Read-Host "  > Interval seconds (default: 5)"
-        if ([string]::IsNullOrWhiteSpace($interval)) { $interval = 5 }
         
-        Clear-Host
-        Show-Header "TCP PORT TEST - ${target}:${port}"
-        Write-Host "  Press Ctrl+C to stop" -ForegroundColor $Yellow
-        Write-Host ""
-        
-        Write-LogEntry -Message "TCP port test started: ${target}:${port}" -FilePath $LogPath
-        $total = 0; $failed = 0; $latencies = @()
-        
-        try {
-            while ($true) {
-                $total++
-                Test-LogSize -LogFilePath $LogPath
-                $result = Test-TCPPort -Target $target -Port $port -LogFile $LogPath
-                if (-not $result.Success) { $failed++ }
-                elseif ($result.Latency) { $latencies += $result.Latency }
-                
-                $avg = if ($latencies.Count -gt 0) { ($latencies | Measure-Object -Average).Average } else { 0 }
-                Show-Stats -Total $total -Failed $failed -AvgLatency $avg -ShowLatency ($latencies.Count -gt 0)
-                Write-Host ""
-                Start-Sleep -Seconds $interval
+        '2' {
+            Write-Host ""
+            $target = Read-Host "  > Target host"
+            Write-Host "  Common: HTTP(80) HTTPS(443) SSH(22) RDP(3389)" -ForegroundColor $Gray
+            $port = [int](Read-Host "  > Port")
+            $interval = Read-Host "  > Interval seconds (default: 5)"
+            if ([string]::IsNullOrWhiteSpace($interval)) { $interval = 5 }
+            
+            Clear-Host
+            Show-Header "TCP PORT TEST - ${target}:${port}"
+            Write-Host "  Press Ctrl+C to stop and return to menu" -ForegroundColor $Yellow
+            Write-Host ""
+            
+            Write-LogEntry -Message "TCP port test started: ${target}:${port}" -FilePath $LogPath
+            $total = 0; $failed = 0; $latencies = @()
+            
+            try {
+                while ($true) {
+                    $total++
+                    Test-LogSize -LogFilePath $LogPath
+                    $result = Test-TCPPort -Target $target -Port $port -LogFile $LogPath
+                    if (-not $result.Success) { $failed++ }
+                    elseif ($result.Latency) { $latencies += $result.Latency }
+                    
+                    $avg = if ($latencies.Count -gt 0) { ($latencies | Measure-Object -Average).Average } else { 0 }
+                    Show-Stats -Total $total -Failed $failed -AvgLatency $avg -ShowLatency ($latencies.Count -gt 0)
+                    Write-Host ""
+                    Start-Sleep -Seconds $interval
+                }
+            } catch {
+                Write-LogEntry -Message "TCP port test stopped" -FilePath $LogPath
             }
-        } finally {
-            Write-LogEntry -Message "TCP port test stopped" -FilePath $LogPath
         }
-    }
-    
-    '3' {
-        Write-Host ""
-        $target = Read-Host "  > Target host"
-        Write-Host "  Common: DNS(53) DHCP(67) NTP(123) SNMP(161)" -ForegroundColor $Gray
-        $port = [int](Read-Host "  > Port")
-        $interval = Read-Host "  > Interval seconds (default: 5)"
-        if ([string]::IsNullOrWhiteSpace($interval)) { $interval = 5 }
         
-        Clear-Host
-        Show-Header "UDP PORT TEST - ${target}:${port}"
-        Write-Host "  Press Ctrl+C to stop" -ForegroundColor $Yellow
-        Write-Host ""
-        
-        Write-LogEntry -Message "UDP port test started: ${target}:${port}" -FilePath $LogPath
-        $total = 0; $failed = 0
-        
-        try {
-            while ($true) {
-                $total++
-                Test-LogSize -LogFilePath $LogPath
-                $result = Test-UDPPort -Target $target -Port $port -LogFile $LogPath
-                if (-not $result.Success) { $failed++ }
-                Show-Stats -Total $total -Failed $failed -AvgLatency 0 -ShowLatency $false
-                Write-Host ""
-                Start-Sleep -Seconds $interval
+        '3' {
+            Write-Host ""
+            $target = Read-Host "  > Target host"
+            Write-Host "  Common: DNS(53) DHCP(67) NTP(123) SNMP(161)" -ForegroundColor $Gray
+            $port = [int](Read-Host "  > Port")
+            $interval = Read-Host "  > Interval seconds (default: 5)"
+            if ([string]::IsNullOrWhiteSpace($interval)) { $interval = 5 }
+            
+            Clear-Host
+            Show-Header "UDP PORT TEST - ${target}:${port}"
+            Write-Host "  Press Ctrl+C to stop and return to menu" -ForegroundColor $Yellow
+            Write-Host ""
+            
+            Write-LogEntry -Message "UDP port test started: ${target}:${port}" -FilePath $LogPath
+            $total = 0; $failed = 0
+            
+            try {
+                while ($true) {
+                    $total++
+                    Test-LogSize -LogFilePath $LogPath
+                    $result = Test-UDPPort -Target $target -Port $port -LogFile $LogPath
+                    if (-not $result.Success) { $failed++ }
+                    Show-Stats -Total $total -Failed $failed -AvgLatency 0 -ShowLatency $false
+                    Write-Host ""
+                    Start-Sleep -Seconds $interval
+                }
+            } catch {
+                Write-LogEntry -Message "UDP port test stopped" -FilePath $LogPath
             }
-        } finally {
-            Write-LogEntry -Message "UDP port test stopped" -FilePath $LogPath
         }
-    }
-    
-    '4' {
-        Write-Host ""
-        $target = Read-Host "  > Target host"
-        $startPort = [int](Read-Host "  > Start port")
-        $endPort = [int](Read-Host "  > End port")
-        Write-Host "  1 - TCP" -ForegroundColor $White
-        Write-Host "  2 - UDP" -ForegroundColor $White
-        $proto = Read-Host "  > Protocol (1 or 2)"
-        $protocol = if ($proto -eq '2') { "UDP" } else { "TCP" }
         
-        Clear-Host
-        Show-Header "PORT SCAN - $target"
+        '4' {
+            Write-Host ""
+            $target = Read-Host "  > Target host"
+            $startPort = [int](Read-Host "  > Start port")
+            $endPort = [int](Read-Host "  > End port")
+            Write-Host "  1 - TCP" -ForegroundColor $White
+            Write-Host "  2 - UDP" -ForegroundColor $White
+            $proto = Read-Host "  > Protocol (1 or 2)"
+            $protocol = if ($proto -eq '2') { "UDP" } else { "TCP" }
+            
+            Clear-Host
+            Show-Header "PORT SCAN - $target"
+            
+            Invoke-PortScan -Target $target -StartPort $startPort -EndPort $endPort -Protocol $protocol -LogFile $LogPath
+            
+            Write-Host ""
+            Read-Host "  Press Enter to return to menu"
+        }
         
-        Invoke-PortScan -Target $target -StartPort $startPort -EndPort $endPort -Protocol $protocol -LogFile $LogPath
+        '5' {
+            Write-Host ""
+            $target = Read-Host "  > Target host"
+            $maxHops = Read-Host "  > Max hops (default: 30)"
+            if ([string]::IsNullOrWhiteSpace($maxHops)) { $maxHops = 30 }
+            
+            Clear-Host
+            Show-Header "TRACEROUTE - $target"
+            
+            Invoke-Traceroute -Target $target -MaxHops $maxHops -LogFile $LogPath
+            
+            Write-Host ""
+            Read-Host "  Press Enter to return to menu"
+        }
         
-        Write-Host ""
-        Read-Host "  Press Enter to exit"
-    }
-    
-    '5' {
-        Write-Host ""
-        $target = Read-Host "  > Target host"
-        $maxHops = Read-Host "  > Max hops (default: 30)"
-        if ([string]::IsNullOrWhiteSpace($maxHops)) { $maxHops = 30 }
+        '6' {
+            Write-Host ""
+            $domain = Read-Host "  > Domain name"
+            
+            Clear-Host
+            Show-Header "DNS LOOKUP - $domain"
+            
+            Invoke-DNSLookup -Domain $domain -LogFile $LogPath
+            
+            Write-Host ""
+            Read-Host "  Press Enter to return to menu"
+        }
         
-        Clear-Host
-        Show-Header "TRACEROUTE - $target"
+        '7' {
+            Clear-Host
+            Show-Header "BANDWIDTH TEST"
+            
+            Test-Bandwidth -LogFile $LogPath
+            
+            Write-Host ""
+            Read-Host "  Press Enter to return to menu"
+        }
         
-        Invoke-Traceroute -Target $target -MaxHops $maxHops -LogFile $LogPath
+        '8' {
+            Write-Host ""
+            $portsInput = Read-Host "  > Ports to check (comma-separated, e.g., 80,443,22)"
+            $ports = $portsInput.Split(',') | ForEach-Object { [int]$_.Trim() }
+            
+            Clear-Host
+            Show-Header "EXTERNAL PORT CHECK"
+            
+            Test-ExternalPort -Ports $ports -LogFile $LogPath
+            
+            Write-Host ""
+            Read-Host "  Press Enter to return to menu"
+        }
         
-        Write-Host ""
-        Read-Host "  Press Enter to exit"
-    }
-    
-    '6' {
-        Write-Host ""
-        $domain = Read-Host "  > Domain name"
+        '9' {
+            Write-Host ""
+            Write-Host "  Common: HTTP(80) HTTPS(443) SSH(22) RDP(3389) SMB(445)" -ForegroundColor $Gray
+            $portsInput = Read-Host "  > Ports to check (comma-separated)"
+            $ports = $portsInput.Split(',') | ForEach-Object { [int]$_.Trim() }
+            
+            Clear-Host
+            Show-Header "LOCAL BLOCKED PORTS CHECK"
+            
+            Test-LocalPorts -Ports $ports -LogFile $LogPath
+            
+            Write-Host ""
+            Read-Host "  Press Enter to return to menu"
+        }
         
-        Clear-Host
-        Show-Header "DNS LOOKUP - $domain"
+        '10' {
+            Clear-Host
+            Show-Header "SMTP EMAIL TEST"
+            
+            Send-TestEmail -LogFile $LogPath
+            
+            Write-Host ""
+            Read-Host "  Press Enter to return to menu"
+        }
         
-        Invoke-DNSLookup -Domain $domain -LogFile $LogPath
-        
-        Write-Host ""
-        Read-Host "  Press Enter to exit"
-    }
-    
-    '7' {
-        Clear-Host
-        Show-Header "BANDWIDTH TEST"
-        
-        Test-Bandwidth -LogFile $LogPath
-        
-        Write-Host ""
-        Read-Host "  Press Enter to exit"
-    }
-    
-    '8' {
-        Write-Host ""
-        $portsInput = Read-Host "  > Ports to check (comma-separated, e.g., 80,443,22)"
-        $ports = $portsInput.Split(',') | ForEach-Object { [int]$_.Trim() }
-        
-        Clear-Host
-        Show-Header "EXTERNAL PORT CHECK"
-        
-        Test-ExternalPort -Ports $ports -LogFile $LogPath
-        
-        Write-Host ""
-        Read-Host "  Press Enter to exit"
-    }
-    
-    '9' {
-        Write-Host ""
-        Write-Host "  Common: HTTP(80) HTTPS(443) SSH(22) RDP(3389) SMB(445)" -ForegroundColor $Gray
-        $portsInput = Read-Host "  > Ports to check (comma-separated)"
-        $ports = $portsInput.Split(',') | ForEach-Object { [int]$_.Trim() }
-        
-        Clear-Host
-        Show-Header "LOCAL BLOCKED PORTS CHECK"
-        
-        Test-LocalPorts -Ports $ports -LogFile $LogPath
-        
-        Write-Host ""
-        Read-Host "  Press Enter to exit"
-    }
-    
-    '10' {
-        Clear-Host
-        Show-Header "SMTP EMAIL TEST"
-        
-        Send-TestEmail -LogFile $LogPath
-        
-        Write-Host ""
-        Read-Host "  Press Enter to exit"
-    }
-    
-    '11' {
-        Clear-Host
-        Show-Header "PUBLIC IP INFORMATION"
-        
-        Get-PublicIPInfo -LogFile $LogPath
-        
-        Write-Host ""
-        Read-Host "  Press Enter to exit"
+        '11' {
+            Clear-Host
+            Show-Header "PUBLIC IP INFORMATION"
+            
+            Get-PublicIPInfo -LogFile $LogPath
+            
+            Write-Host ""
+            Read-Host "  Press Enter to return to menu"
+        }
     }
 }
-
-Write-Host ""
-Write-Host "  [SAVED] Log: $LogPath" -ForegroundColor $Cyan
-Write-Host "  [BYE] Thank you for using Network Testing Tool!" -ForegroundColor $Magenta
-Write-Host ""

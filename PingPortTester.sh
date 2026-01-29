@@ -1,8 +1,6 @@
 #!/bin/bash
 #
 # Network Connectivity Testing Tool for Linux/macOS
-# Tests network connectivity using ICMP ping, TCP/UDP port testing, traceroute,
-# DNS lookup, bandwidth test, local blocked ports check, SMTP email test, and public IP check.
 #
 
 # Colors
@@ -49,7 +47,6 @@ check_log_size() {
     fi
 }
 
-# Mode 1: ICMP Ping
 test_ping() {
     local target=$1
     local ts=$(date '+%H:%M:%S')
@@ -64,7 +61,6 @@ test_ping() {
     fi
 }
 
-# Mode 2: TCP Port Test
 test_tcp_port() {
     local target=$1
     local port=$2
@@ -91,7 +87,6 @@ test_tcp_port() {
     fi
 }
 
-# Mode 3: UDP Port Test
 test_udp_port() {
     local target=$1
     local port=$2
@@ -113,7 +108,6 @@ test_udp_port() {
     fi
 }
 
-# Mode 4: Port Range Scan
 port_scan() {
     local target=$1
     local start_port=$2
@@ -163,7 +157,6 @@ port_scan() {
     write_log "Port scan completed"
 }
 
-# Mode 5: Traceroute
 do_traceroute() {
     local target=$1
     local max_hops=$2
@@ -207,7 +200,6 @@ do_traceroute() {
     write_log "Traceroute completed"
 }
 
-# Mode 6: DNS Lookup
 dns_lookup() {
     local domain=$1
     
@@ -274,7 +266,6 @@ dns_lookup() {
     write_log "DNS Lookup completed"
 }
 
-# Mode 7: Bandwidth Test
 bandwidth_test() {
     echo -e "  ${CYAN}Bandwidth Test${NC}"
     echo ""
@@ -354,7 +345,6 @@ bandwidth_test() {
     write_log "Bandwidth test completed"
 }
 
-# Mode 8: External Port Check
 external_port_check() {
     local ports=("$@")
     
@@ -394,7 +384,6 @@ external_port_check() {
     write_log "External port check completed"
 }
 
-# Mode 9: Local Blocked Ports
 local_port_check() {
     local ports=("$@")
     
@@ -450,7 +439,6 @@ local_port_check() {
     write_log "Local port check completed"
 }
 
-# Mode 10: SMTP Email Test
 send_test_email() {
     echo -e "  ${CYAN}SMTP Email Test${NC}"
     echo ""
@@ -473,12 +461,11 @@ send_test_email() {
     read -p "  > Choice (1-3, default: 3): " enc_choice
     [[ -z "$enc_choice" ]] && enc_choice="3"
     
-    local use_tls=""
     local encryption_type="None"
     case $enc_choice in
-        "1") use_tls=""; encryption_type="None" ;;
-        "2") use_tls="-ssl"; encryption_type="SSL/TLS" ;;
-        "3") use_tls="-starttls smtp"; encryption_type="STARTTLS" ;;
+        "1") encryption_type="None" ;;
+        "2") encryption_type="SSL/TLS" ;;
+        "3") encryption_type="STARTTLS" ;;
     esac
     
     echo ""
@@ -529,8 +516,6 @@ send_test_email() {
         send_method="swaks"
     elif command -v curl &> /dev/null; then
         send_method="curl"
-    elif command -v openssl &> /dev/null; then
-        send_method="openssl"
     fi
     
     case $send_method in
@@ -575,77 +560,20 @@ send_test_email() {
             fi
             ;;
             
-        "openssl")
-            echo -e "  ${YELLOW}Using openssl (basic method)...${NC}"
-            
-            local ssl_cmd=""
-            if [[ "$enc_choice" == "2" ]]; then
-                ssl_cmd="openssl s_client -connect $smtp_server:$smtp_port -quiet"
-            elif [[ "$enc_choice" == "3" ]]; then
-                ssl_cmd="openssl s_client -connect $smtp_server:$smtp_port -starttls smtp -quiet"
-            else
-                ssl_cmd="nc $smtp_server $smtp_port"
-            fi
-            
-            local auth_plain=$(echo -ne "\0$username\0$password" | base64)
-            
-            {
-                sleep 1
-                echo "EHLO localhost"
-                sleep 1
-                echo "AUTH PLAIN $auth_plain"
-                sleep 1
-                echo "MAIL FROM:<$from_email>"
-                sleep 1
-                echo "RCPT TO:<$to_email>"
-                sleep 1
-                echo "DATA"
-                sleep 1
-                echo "Subject: $subject"
-                echo "From: $from_email"
-                echo "To: $to_email"
-                echo ""
-                echo -e "$body"
-                echo "."
-                sleep 1
-                echo "QUIT"
-            } | $ssl_cmd 2>&1
-            
-            echo ""
-            echo -e "  ${YELLOW}[INFO] Check if email was received${NC}"
-            write_log "SMTP Test: Attempted via openssl"
-            ;;
-            
         *)
             echo ""
             echo -e "  ${RED}[ERROR] No suitable email tool found${NC}"
             echo ""
-            echo -e "  ${YELLOW}Please install one of the following:${NC}"
+            echo -e "  ${YELLOW}Please install swaks:${NC}"
             echo -e "    ${GRAY}Ubuntu/Debian: sudo apt install swaks${NC}"
-            echo -e "    ${GRAY}CentOS/RHEL:   sudo yum install swaks${NC}"
             echo -e "    ${GRAY}macOS:         brew install swaks${NC}"
             
             write_log "SMTP Test: FAILED - No suitable tool found"
             return 1
             ;;
     esac
-    
-    echo ""
-    echo -e "  ${CYAN}Details:${NC}"
-    echo -e "    Server:     $smtp_server:$smtp_port"
-    echo -e "    Encryption: $encryption_type"
-    echo -e "    From:       $from_email"
-    echo -e "    To:         $to_email"
-    
-    echo ""
-    echo -e "  ${YELLOW}Troubleshooting tips:${NC}"
-    echo -e "    ${GRAY}- Verify SMTP server and port are correct${NC}"
-    echo -e "    ${GRAY}- Check username and password${NC}"
-    echo -e "    ${GRAY}- Gmail: Enable 'Less secure apps' or use App Password${NC}"
-    echo -e "    ${GRAY}- Office365: May require App Password with MFA${NC}"
 }
 
-# Mode 11: Public IP Info
 get_public_ip_info() {
     echo -e "  ${CYAN}Fetching public IP information...${NC}"
     echo ""
@@ -654,7 +582,6 @@ get_public_ip_info() {
     
     local public_ip=""
     
-    # Try multiple services
     for service in "https://api.ipify.org" "https://ifconfig.me" "https://icanhazip.com"; do
         public_ip=$(curl -s --max-time 10 "$service" 2>/dev/null | tr -d '\n')
         if [[ -n "$public_ip" && "$public_ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -672,7 +599,6 @@ get_public_ip_info() {
     echo -e "  ${GREEN}$public_ip${NC}"
     echo ""
     
-    # Get detailed info from ipinfo.io
     local details=$(curl -s --max-time 10 "https://ipinfo.io/$public_ip/json" 2>/dev/null)
     
     if [[ -n "$details" ]]; then
@@ -709,7 +635,6 @@ get_public_ip_info() {
         write_log "Public IP: $public_ip (no details)"
     fi
     
-    # IPv6 Check
     echo ""
     show_separator
     echo -e "  ${CYAN}IPv6 Check:${NC}"
@@ -768,12 +693,14 @@ show_menu() {
     echo -e "  ${WHITE}10 - SMTP Email Test      Send test email via SMTP${NC}"
     echo -e "  ${WHITE}11 - Public IP Info       Show public IP and location${NC}"
     echo ""
+    echo -e "  ${RED}0  - Exit${NC}"
+    echo ""
     show_separator
     echo ""
     
     while true; do
-        read -p "  > Enter choice (1-11): " choice
-        if [[ "$choice" =~ ^([1-9]|1[01])$ ]]; then
+        read -p "  > Enter choice (0-11): " choice
+        if [[ "$choice" =~ ^([0-9]|1[01])$ ]]; then
             echo "$choice"
             return
         fi
@@ -781,231 +708,234 @@ show_menu() {
     done
 }
 
-# Cleanup on exit
-cleanup() {
-    echo ""
-    echo -e "  ${YELLOW}[STOP] Monitoring stopped${NC}"
-    write_log "Monitoring stopped"
-    echo ""
-    echo -e "  ${CYAN}[SAVED] Log: $LOG_PATH${NC}"
-    echo -e "  ${MAGENTA}[BYE] Thank you for using Network Testing Tool!${NC}"
-    echo ""
-    exit 0
-}
-
-trap cleanup SIGINT
-
 # ============================================================================
 # MAIN
 # ============================================================================
 
-mode=$(show_menu)
-
 touch "$LOG_PATH"
 
-case $mode in
-    1)
-        echo ""
-        read -p "  > Target host: " target
-        read -p "  > Interval seconds (default: 5): " interval
-        [[ -z "$interval" ]] && interval=5
-        
-        clear
-        show_header "PING MONITORING - $target"
-        echo -e "  ${YELLOW}Press Ctrl+C to stop${NC}"
-        echo ""
-        
-        write_log "Ping monitoring started: $target"
-        total=0
-        failed=0
-        
-        while true; do
-            ((total++))
-            check_log_size
-            test_ping "$target" || ((failed++))
-            show_stats $total $failed 0 "false"
-            echo ""
-            sleep "$interval"
-        done
-        ;;
+while true; do
+    mode=$(show_menu)
     
-    2)
+    if [[ "$mode" == "0" ]]; then
         echo ""
-        read -p "  > Target host: " target
-        echo -e "  ${GRAY}Common: HTTP(80) HTTPS(443) SSH(22) RDP(3389)${NC}"
-        read -p "  > Port: " port
-        read -p "  > Interval seconds (default: 5): " interval
-        [[ -z "$interval" ]] && interval=5
-        
-        clear
-        show_header "TCP PORT TEST - ${target}:${port}"
-        echo -e "  ${YELLOW}Press Ctrl+C to stop${NC}"
+        echo -e "  ${CYAN}[SAVED] Log: $LOG_PATH${NC}"
+        echo -e "  ${MAGENTA}[BYE] Thank you for using Network Testing Tool!${NC}"
         echo ""
-        
-        write_log "TCP port test started: ${target}:${port}"
-        total=0
-        failed=0
-        latency_sum=0
-        latency_count=0
-        
-        while true; do
-            ((total++))
-            check_log_size
-            result=$(test_tcp_port "$target" "$port")
-            if [[ $? -ne 0 ]]; then
-                ((failed++))
-            else
-                latency=$(echo "$result" | tail -1)
-                if [[ "$latency" =~ ^[0-9]+$ ]]; then
-                    latency_sum=$((latency_sum + latency))
-                    ((latency_count++))
-                fi
-            fi
-            
-            avg=0
-            [[ $latency_count -gt 0 ]] && avg=$((latency_sum / latency_count))
-            show_stats $total $failed $avg "$([[ $latency_count -gt 0 ]] && echo true || echo false)"
-            echo ""
-            sleep "$interval"
-        done
-        ;;
-    
-    3)
-        echo ""
-        read -p "  > Target host: " target
-        echo -e "  ${GRAY}Common: DNS(53) DHCP(67) NTP(123) SNMP(161)${NC}"
-        read -p "  > Port: " port
-        read -p "  > Interval seconds (default: 5): " interval
-        [[ -z "$interval" ]] && interval=5
-        
-        clear
-        show_header "UDP PORT TEST - ${target}:${port}"
-        echo -e "  ${YELLOW}Press Ctrl+C to stop${NC}"
-        echo ""
-        
-        write_log "UDP port test started: ${target}:${port}"
-        total=0
-        failed=0
-        
-        while true; do
-            ((total++))
-            check_log_size
-            test_udp_port "$target" "$port" || ((failed++))
-            show_stats $total $failed 0 "false"
-            echo ""
-            sleep "$interval"
-        done
-        ;;
-    
-    4)
-        echo ""
-        read -p "  > Target host: " target
-        read -p "  > Start port: " start_port
-        read -p "  > End port: " end_port
-        echo -e "  ${WHITE}1 - TCP${NC}"
-        echo -e "  ${WHITE}2 - UDP${NC}"
-        read -p "  > Protocol (1 or 2): " proto
-        protocol="TCP"
-        [[ "$proto" == "2" ]] && protocol="UDP"
-        
-        clear
-        show_header "PORT SCAN - $target"
-        
-        port_scan "$target" "$start_port" "$end_port" "$protocol"
-        
-        echo ""
-        read -p "  Press Enter to exit"
-        ;;
-    
-    5)
-        echo ""
-        read -p "  > Target host: " target
-        read -p "  > Max hops (default: 30): " max_hops
-        [[ -z "$max_hops" ]] && max_hops=30
-        
-        clear
-        show_header "TRACEROUTE - $target"
-        
-        do_traceroute "$target" "$max_hops"
-        
-        echo ""
-        read -p "  Press Enter to exit"
-        ;;
-    
-    6)
-        echo ""
-        read -p "  > Domain name: " domain
-        
-        clear
-        show_header "DNS LOOKUP - $domain"
-        
-        dns_lookup "$domain"
-        
-        echo ""
-        read -p "  Press Enter to exit"
-        ;;
-    
-    7)
-        clear
-        show_header "BANDWIDTH TEST"
-        
-        bandwidth_test
-        
-        echo ""
-        read -p "  Press Enter to exit"
-        ;;
-    
-    8)
-        echo ""
-        read -p "  > Ports to check (comma-separated, e.g., 80,443,22): " ports_input
-        IFS=',' read -ra ports <<< "$ports_input"
-        
-        clear
-        show_header "EXTERNAL PORT CHECK"
-        
-        external_port_check "${ports[@]}"
-        
-        echo ""
-        read -p "  Press Enter to exit"
-        ;;
-    
-    9)
-        echo ""
-        echo -e "  ${GRAY}Common: HTTP(80) HTTPS(443) SSH(22) RDP(3389) SMB(445)${NC}"
-        read -p "  > Ports to check (comma-separated): " ports_input
-        IFS=',' read -ra ports <<< "$ports_input"
-        
-        clear
-        show_header "LOCAL BLOCKED PORTS CHECK"
-        
-        local_port_check "${ports[@]}"
-        
-        echo ""
-        read -p "  Press Enter to exit"
-        ;;
-    
-    10)
-        clear
-        show_header "SMTP EMAIL TEST"
-        
-        send_test_email
-        
-        echo ""
-        read -p "  Press Enter to exit"
-        ;;
-    
-    11)
-        clear
-        show_header "PUBLIC IP INFORMATION"
-        
-        get_public_ip_info
-        
-        echo ""
-        read -p "  Press Enter to exit"
-        ;;
-esac
+        exit 0
+    fi
 
-echo ""
-echo -e "  ${CYAN}[SAVED] Log: $LOG_PATH${NC}"
-echo -e "  ${MAGENTA}[BYE] Thank you for using Network Testing Tool!${NC}"
-echo ""
+    case $mode in
+        1)
+            echo ""
+            read -p "  > Target host: " target
+            read -p "  > Interval seconds (default: 5): " interval
+            [[ -z "$interval" ]] && interval=5
+            
+            clear
+            show_header "PING MONITORING - $target"
+            echo -e "  ${YELLOW}Press Ctrl+C to stop and return to menu${NC}"
+            echo ""
+            
+            write_log "Ping monitoring started: $target"
+            total=0
+            failed=0
+            
+            trap 'write_log "Ping monitoring stopped"; break' SIGINT
+            
+            while true; do
+                ((total++))
+                check_log_size
+                test_ping "$target" || ((failed++))
+                show_stats $total $failed 0 "false"
+                echo ""
+                sleep "$interval"
+            done
+            
+            trap - SIGINT
+            ;;
+        
+        2)
+            echo ""
+            read -p "  > Target host: " target
+            echo -e "  ${GRAY}Common: HTTP(80) HTTPS(443) SSH(22) RDP(3389)${NC}"
+            read -p "  > Port: " port
+            read -p "  > Interval seconds (default: 5): " interval
+            [[ -z "$interval" ]] && interval=5
+            
+            clear
+            show_header "TCP PORT TEST - ${target}:${port}"
+            echo -e "  ${YELLOW}Press Ctrl+C to stop and return to menu${NC}"
+            echo ""
+            
+            write_log "TCP port test started: ${target}:${port}"
+            total=0
+            failed=0
+            latency_sum=0
+            latency_count=0
+            
+            trap 'write_log "TCP port test stopped"; break' SIGINT
+            
+            while true; do
+                ((total++))
+                check_log_size
+                result=$(test_tcp_port "$target" "$port")
+                if [[ $? -ne 0 ]]; then
+                    ((failed++))
+                else
+                    latency=$(echo "$result" | tail -1)
+                    if [[ "$latency" =~ ^[0-9]+$ ]]; then
+                        latency_sum=$((latency_sum + latency))
+                        ((latency_count++))
+                    fi
+                fi
+                
+                avg=0
+                [[ $latency_count -gt 0 ]] && avg=$((latency_sum / latency_count))
+                show_stats $total $failed $avg "$([[ $latency_count -gt 0 ]] && echo true || echo false)"
+                echo ""
+                sleep "$interval"
+            done
+            
+            trap - SIGINT
+            ;;
+        
+        3)
+            echo ""
+            read -p "  > Target host: " target
+            echo -e "  ${GRAY}Common: DNS(53) DHCP(67) NTP(123) SNMP(161)${NC}"
+            read -p "  > Port: " port
+            read -p "  > Interval seconds (default: 5): " interval
+            [[ -z "$interval" ]] && interval=5
+            
+            clear
+            show_header "UDP PORT TEST - ${target}:${port}"
+            echo -e "  ${YELLOW}Press Ctrl+C to stop and return to menu${NC}"
+            echo ""
+            
+            write_log "UDP port test started: ${target}:${port}"
+            total=0
+            failed=0
+            
+            trap 'write_log "UDP port test stopped"; break' SIGINT
+            
+            while true; do
+                ((total++))
+                check_log_size
+                test_udp_port "$target" "$port" || ((failed++))
+                show_stats $total $failed 0 "false"
+                echo ""
+                sleep "$interval"
+            done
+            
+            trap - SIGINT
+            ;;
+        
+        4)
+            echo ""
+            read -p "  > Target host: " target
+            read -p "  > Start port: " start_port
+            read -p "  > End port: " end_port
+            echo -e "  ${WHITE}1 - TCP${NC}"
+            echo -e "  ${WHITE}2 - UDP${NC}"
+            read -p "  > Protocol (1 or 2): " proto
+            protocol="TCP"
+            [[ "$proto" == "2" ]] && protocol="UDP"
+            
+            clear
+            show_header "PORT SCAN - $target"
+            
+            port_scan "$target" "$start_port" "$end_port" "$protocol"
+            
+            echo ""
+            read -p "  Press Enter to return to menu"
+            ;;
+        
+        5)
+            echo ""
+            read -p "  > Target host: " target
+            read -p "  > Max hops (default: 30): " max_hops
+            [[ -z "$max_hops" ]] && max_hops=30
+            
+            clear
+            show_header "TRACEROUTE - $target"
+            
+            do_traceroute "$target" "$max_hops"
+            
+            echo ""
+            read -p "  Press Enter to return to menu"
+            ;;
+        
+        6)
+            echo ""
+            read -p "  > Domain name: " domain
+            
+            clear
+            show_header "DNS LOOKUP - $domain"
+            
+            dns_lookup "$domain"
+            
+            echo ""
+            read -p "  Press Enter to return to menu"
+            ;;
+        
+        7)
+            clear
+            show_header "BANDWIDTH TEST"
+            
+            bandwidth_test
+            
+            echo ""
+            read -p "  Press Enter to return to menu"
+            ;;
+        
+        8)
+            echo ""
+            read -p "  > Ports to check (comma-separated, e.g., 80,443,22): " ports_input
+            IFS=',' read -ra ports <<< "$ports_input"
+            
+            clear
+            show_header "EXTERNAL PORT CHECK"
+            
+            external_port_check "${ports[@]}"
+            
+            echo ""
+            read -p "  Press Enter to return to menu"
+            ;;
+        
+        9)
+            echo ""
+            echo -e "  ${GRAY}Common: HTTP(80) HTTPS(443) SSH(22) RDP(3389) SMB(445)${NC}"
+            read -p "  > Ports to check (comma-separated): " ports_input
+            IFS=',' read -ra ports <<< "$ports_input"
+            
+            clear
+            show_header "LOCAL BLOCKED PORTS CHECK"
+            
+            local_port_check "${ports[@]}"
+            
+            echo ""
+            read -p "  Press Enter to return to menu"
+            ;;
+        
+        10)
+            clear
+            show_header "SMTP EMAIL TEST"
+            
+            send_test_email
+            
+            echo ""
+            read -p "  Press Enter to return to menu"
+            ;;
+        
+        11)
+            clear
+            show_header "PUBLIC IP INFORMATION"
+            
+            get_public_ip_info
+            
+            echo ""
+            read -p "  Press Enter to return to menu"
+            ;;
+    esac
+done
