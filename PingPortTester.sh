@@ -17,6 +17,7 @@ NC='\033[0m'
 MAX_LOG_SIZE_MB=20
 MAX_LOG_SIZE_BYTES=$((MAX_LOG_SIZE_MB * 1024 * 1024))
 LOG_PATH="./NetworkTest.log"
+STOP_MONITORING=0
 
 show_header() {
     echo ""
@@ -184,7 +185,6 @@ do_traceroute() {
             
             if [[ -n "$ip" ]]; then
                 printf "  %3d   %-9s %s\n" "$ttl" "${time:-*}ms" "$ip"
-                write_log "Hop $ttl: $ip (${time:-*}ms)"
                 
                 if echo "$result" | grep -q "ttl="; then
                     echo ""
@@ -230,7 +230,6 @@ dns_lookup() {
             local ips=$(echo "$result" | awk '{print $NF}' | tr '\n' ', ' | sed 's/,$//')
             echo -e "    ${GREEN}$ips${NC}"
             echo -e "    ${GRAY}Query: ${time}ms${NC}"
-            write_log "${dns_names[$i]}: $ips"
         else
             echo -e "    ${YELLOW}No results${NC}"
         fi
@@ -312,31 +311,6 @@ bandwidth_test() {
         echo -e "    Speed: ${color}${speed_mbps} Mbps${NC}"
         
         write_log "Download: ${speed_mbps} Mbps"
-        
-        echo ""
-        echo -e "  ${CYAN}Latency Test:${NC}"
-        local latencies=()
-        for server in "8.8.8.8" "1.1.1.1"; do
-            local lat=$(ping -c 3 "$server" 2>/dev/null | tail -1 | awk -F'/' '{print $5}')
-            if [[ -n "$lat" ]]; then
-                latencies+=("$lat")
-            fi
-        done
-        
-        if [[ ${#latencies[@]} -gt 0 ]]; then
-            local sum=0
-            for l in "${latencies[@]}"; do
-                sum=$(echo "$sum + $l" | bc)
-            done
-            local avg=$(echo "scale=2; $sum / ${#latencies[@]}" | bc)
-            
-            local color=$GREEN
-            (( $(echo "$avg > 30" | bc -l) )) && color=$YELLOW
-            (( $(echo "$avg > 100" | bc -l) )) && color=$RED
-            
-            echo -e "    Average: ${color}${avg}ms${NC}"
-            write_log "Latency: ${avg}ms"
-        fi
     else
         echo -e "  ${RED}[ERROR] Download failed${NC}"
         rm -f "$temp_file"
@@ -379,7 +353,6 @@ external_port_check() {
     
     echo ""
     echo -e "  ${YELLOW}[INFO] Results depend on router/firewall configuration${NC}"
-    echo -e "  ${YELLOW}[INFO] Ports may need port forwarding to be accessible${NC}"
     
     write_log "External port check completed"
 }
@@ -427,8 +400,6 @@ local_port_check() {
                     echo -e "  ${RED}[BLOCKED] UFW: Port blocked${NC}"
                 elif echo "$ufw_status" | grep -qE "$port.*ALLOW"; then
                     echo -e "  ${GREEN}[ALLOWED] UFW: Port allowed${NC}"
-                else
-                    echo -e "  ${YELLOW}[DEFAULT] No specific UFW rule${NC}"
                 fi
             fi
         fi
@@ -442,10 +413,8 @@ local_port_check() {
 send_test_email() {
     echo -e "  ${CYAN}SMTP Email Test${NC}"
     echo ""
-    echo -e "  ${WHITE}Enter SMTP configuration:${NC}"
-    echo ""
     
-    echo -e "  ${GRAY}SMTP Server (e.g., smtp.gmail.com, smtp.office365.com):${NC}"
+    echo -e "  ${GRAY}SMTP Server (e.g., smtp.gmail.com):${NC}"
     read -p "  > Server: " smtp_server
     
     echo ""
@@ -461,41 +430,23 @@ send_test_email() {
     read -p "  > Choice (1-3, default: 3): " enc_choice
     [[ -z "$enc_choice" ]] && enc_choice="3"
     
-    local encryption_type="None"
-    case $enc_choice in
-        "1") encryption_type="None" ;;
-        "2") encryption_type="SSL/TLS" ;;
-        "3") encryption_type="STARTTLS" ;;
-    esac
-    
     echo ""
     read -p "  > From Email: " from_email
-    
-    echo ""
-    echo -e "  ${GRAY}Authentication:${NC}"
-    read -p "  > Username (usually email address): " username
+    read -p "  > Username: " username
     read -s -p "  > Password: " password
     echo ""
+    read -p "  > To Email: " to_email
     
     echo ""
-    read -p "  > To Email (recipient): " to_email
-    
-    echo ""
-    read -p "  > Subject (default: Test Email from PingPortTester): " subject
+    read -p "  > Subject (default: Test Email): " subject
     [[ -z "$subject" ]] && subject="Test Email from PingPortTester"
-    
-    read -p "  > Body (default: This is a test email): " body
-    [[ -z "$body" ]] && body="This is a test email sent from PingPortTester.\n\nTimestamp: $(date '+%Y-%m-%d %H:%M:%S')\nServer: $smtp_server\nPort: $smtp_port\nEncryption: $encryption_type"
     
     echo ""
     show_separator
     echo -e "  ${CYAN}Configuration Summary:${NC}"
-    echo -e "    Server:     $smtp_server"
-    echo -e "    Port:       $smtp_port"
-    echo -e "    Encryption: $encryption_type"
-    echo -e "    From:       $from_email"
-    echo -e "    To:         $to_email"
-    echo -e "    Subject:    $subject"
+    echo -e "    Server: $smtp_server:$smtp_port"
+    echo -e "    From:   $from_email"
+    echo -e "    To:     $to_email"
     show_separator
     echo ""
     
@@ -508,70 +459,43 @@ send_test_email() {
     echo ""
     echo -e "  ${CYAN}Sending email...${NC}"
     
-    write_log "SMTP Test: $smtp_server:$smtp_port ($encryption_type) From: $from_email To: $to_email"
-    
-    local send_method=""
+    write_log "SMTP Test: $smtp_server:$smtp_port From: $from_email To: $to_email"
     
     if command -v swaks &> /dev/null; then
-        send_method="swaks"
+        local tls_opt=""
+        [[ "$enc_choice" == "2" ]] && tls_opt="--tls"
+        [[ "$enc_choice" == "3" ]] && tls_opt="--tls-on-connect"
+        
+        if swaks --to "$to_email" --from "$from_email" --server "$smtp_server" --port "$smtp_port" \
+                 --auth LOGIN --auth-user "$username" --auth-password "$password" \
+                 --header "Subject: $subject" --body "Test email from PingPortTester" $tls_opt 2>&1; then
+            echo -e "  ${GREEN}[SUCCESS] Email sent!${NC}"
+            write_log "SMTP Test: SUCCESS"
+        else
+            echo -e "  ${RED}[FAILED] Could not send email${NC}"
+            write_log "SMTP Test: FAILED"
+        fi
     elif command -v curl &> /dev/null; then
-        send_method="curl"
+        local url_scheme="smtp"
+        [[ "$enc_choice" == "2" ]] && url_scheme="smtps"
+        
+        local curl_opts=""
+        [[ "$enc_choice" == "3" ]] && curl_opts="--ssl-reqd"
+        
+        if echo -e "From: $from_email\nTo: $to_email\nSubject: $subject\n\nTest email" | \
+           curl --url "${url_scheme}://${smtp_server}:${smtp_port}" \
+                --mail-from "$from_email" --mail-rcpt "$to_email" \
+                --user "$username:$password" $curl_opts -T - 2>&1; then
+            echo -e "  ${GREEN}[SUCCESS] Email sent!${NC}"
+            write_log "SMTP Test: SUCCESS"
+        else
+            echo -e "  ${RED}[FAILED] Could not send email${NC}"
+            write_log "SMTP Test: FAILED"
+        fi
+    else
+        echo -e "  ${RED}[ERROR] No email tool found. Install swaks.${NC}"
+        write_log "SMTP Test: FAILED - No tool"
     fi
-    
-    case $send_method in
-        "swaks")
-            local tls_opt=""
-            [[ "$enc_choice" == "2" ]] && tls_opt="--tls"
-            [[ "$enc_choice" == "3" ]] && tls_opt="--tls-on-connect"
-            
-            if swaks --to "$to_email" --from "$from_email" --server "$smtp_server" --port "$smtp_port" \
-                     --auth LOGIN --auth-user "$username" --auth-password "$password" \
-                     --header "Subject: $subject" --body "$body" $tls_opt 2>&1; then
-                echo ""
-                echo -e "  ${GREEN}[SUCCESS] Email sent successfully!${NC}"
-                write_log "SMTP Test: SUCCESS - Email sent to $to_email"
-            else
-                echo ""
-                echo -e "  ${RED}[FAILED] Could not send email${NC}"
-                write_log "SMTP Test: FAILED"
-            fi
-            ;;
-            
-        "curl")
-            local url_scheme="smtp"
-            [[ "$enc_choice" == "2" ]] && url_scheme="smtps"
-            
-            local curl_opts=""
-            [[ "$enc_choice" == "3" ]] && curl_opts="--ssl-reqd"
-            
-            local email_data="From: $from_email\nTo: $to_email\nSubject: $subject\n\n$body"
-            
-            if echo -e "$email_data" | curl --url "${url_scheme}://${smtp_server}:${smtp_port}" \
-                     --mail-from "$from_email" --mail-rcpt "$to_email" \
-                     --user "$username:$password" $curl_opts \
-                     -T - 2>&1; then
-                echo ""
-                echo -e "  ${GREEN}[SUCCESS] Email sent successfully!${NC}"
-                write_log "SMTP Test: SUCCESS - Email sent to $to_email"
-            else
-                echo ""
-                echo -e "  ${RED}[FAILED] Could not send email${NC}"
-                write_log "SMTP Test: FAILED"
-            fi
-            ;;
-            
-        *)
-            echo ""
-            echo -e "  ${RED}[ERROR] No suitable email tool found${NC}"
-            echo ""
-            echo -e "  ${YELLOW}Please install swaks:${NC}"
-            echo -e "    ${GRAY}Ubuntu/Debian: sudo apt install swaks${NC}"
-            echo -e "    ${GRAY}macOS:         brew install swaks${NC}"
-            
-            write_log "SMTP Test: FAILED - No suitable tool found"
-            return 1
-            ;;
-    esac
 }
 
 get_public_ip_info() {
@@ -591,7 +515,6 @@ get_public_ip_info() {
     
     if [[ -z "$public_ip" ]]; then
         echo -e "  ${RED}[ERROR] Could not determine public IP${NC}"
-        write_log "Public IP check: FAILED"
         return
     fi
     
@@ -610,29 +533,21 @@ get_public_ip_info() {
         local region=$(echo "$details" | grep -o '"region"[^,]*' | cut -d'"' -f4)
         local country=$(echo "$details" | grep -o '"country"[^,]*' | cut -d'"' -f4)
         local loc=$(echo "$details" | grep -o '"loc"[^,]*' | cut -d'"' -f4)
-        local postal=$(echo "$details" | grep -o '"postal"[^,]*' | cut -d'"' -f4)
-        local timezone=$(echo "$details" | grep -o '"timezone"[^,]*' | cut -d'"' -f4)
         local org=$(echo "$details" | grep -o '"org"[^,]*' | cut -d'"' -f4)
-        local hostname=$(echo "$details" | grep -o '"hostname"[^,]*' | cut -d'"' -f4)
         
-        [[ -n "$city" ]] && echo -e "    City:         $city"
-        [[ -n "$region" ]] && echo -e "    Region:       $region"
-        [[ -n "$country" ]] && echo -e "    Country:      $country"
-        [[ -n "$loc" ]] && echo -e "    Coordinates:  $loc"
-        [[ -n "$postal" ]] && echo -e "    Postal Code:  $postal"
-        [[ -n "$timezone" ]] && echo -e "    Timezone:     $timezone"
+        [[ -n "$city" ]] && echo -e "    City:     $city"
+        [[ -n "$region" ]] && echo -e "    Region:   $region"
+        [[ -n "$country" ]] && echo -e "    Country:  $country"
+        [[ -n "$loc" ]] && echo -e "    Location: $loc"
         
         echo ""
         show_separator
         echo -e "  ${CYAN}Network Information:${NC}"
         show_separator
         
-        [[ -n "$org" ]] && echo -e "    ISP/Org:      $org"
-        [[ -n "$hostname" ]] && echo -e "    Hostname:     $hostname"
+        [[ -n "$org" ]] && echo -e "    ISP/Org:  $org"
         
-        write_log "Public IP: $public_ip | Location: $city, $region, $country | ISP: $org"
-    else
-        write_log "Public IP: $public_ip (no details)"
+        write_log "Public IP: $public_ip | $city, $country | $org"
     fi
     
     echo ""
@@ -642,10 +557,9 @@ get_public_ip_info() {
     
     local ipv6=$(curl -s --max-time 5 "https://api64.ipify.org" 2>/dev/null)
     if [[ -n "$ipv6" && "$ipv6" != "$public_ip" && "$ipv6" =~ : ]]; then
-        echo -e "    IPv6 Address: ${GREEN}$ipv6${NC}"
-        write_log "IPv6: $ipv6"
+        echo -e "    IPv6: ${GREEN}$ipv6${NC}"
     else
-        echo -e "    ${YELLOW}No IPv6 connectivity detected${NC}"
+        echo -e "    ${YELLOW}No IPv6 connectivity${NC}"
     fi
     
     write_log "Public IP check completed"
@@ -708,6 +622,81 @@ show_menu() {
     done
 }
 
+# Continuous monitoring function
+run_continuous_monitor() {
+    local mode=$1
+    local target=$2
+    local port=$3
+    local interval=$4
+    
+    local total=0
+    local failed=0
+    local latency_sum=0
+    local latency_count=0
+    
+    STOP_MONITORING=0
+    
+    echo -e "  ${YELLOW}Press 'q' to stop and return to menu${NC}"
+    echo ""
+    
+    write_log "$mode monitoring started: $target"
+    
+    # Set terminal to non-blocking read
+    if [[ -t 0 ]]; then
+        stty -echo -icanon time 0 min 0
+    fi
+    
+    while [[ $STOP_MONITORING -eq 0 ]]; do
+        # Check for 'q' keypress
+        read -t 0.1 -n 1 key 2>/dev/null
+        if [[ "$key" == "q" || "$key" == "Q" ]]; then
+            STOP_MONITORING=1
+            break
+        fi
+        
+        ((total++))
+        check_log_size
+        
+        case $mode in
+            "Ping")
+                test_ping "$target" || ((failed++))
+                show_stats $total $failed 0 "false"
+                ;;
+            "TCP")
+                result=$(test_tcp_port "$target" "$port")
+                if [[ $? -ne 0 ]]; then
+                    ((failed++))
+                else
+                    latency=$(echo "$result" | tail -1)
+                    if [[ "$latency" =~ ^[0-9]+$ ]]; then
+                        latency_sum=$((latency_sum + latency))
+                        ((latency_count++))
+                    fi
+                fi
+                local avg=0
+                [[ $latency_count -gt 0 ]] && avg=$((latency_sum / latency_count))
+                show_stats $total $failed $avg "$([[ $latency_count -gt 0 ]] && echo true || echo false)"
+                ;;
+            "UDP")
+                test_udp_port "$target" "$port" || ((failed++))
+                show_stats $total $failed 0 "false"
+                ;;
+        esac
+        
+        echo ""
+        sleep "$interval"
+    done
+    
+    # Restore terminal
+    if [[ -t 0 ]]; then
+        stty echo icanon
+    fi
+    
+    echo ""
+    echo -e "  ${YELLOW}[STOPPED] Returning to menu...${NC}"
+    write_log "$mode monitoring stopped"
+}
+
 # ============================================================================
 # MAIN
 # ============================================================================
@@ -734,25 +723,8 @@ while true; do
             
             clear
             show_header "PING MONITORING - $target"
-            echo -e "  ${YELLOW}Press Ctrl+C to stop and return to menu${NC}"
-            echo ""
             
-            write_log "Ping monitoring started: $target"
-            total=0
-            failed=0
-            
-            trap 'write_log "Ping monitoring stopped"; break' SIGINT
-            
-            while true; do
-                ((total++))
-                check_log_size
-                test_ping "$target" || ((failed++))
-                show_stats $total $failed 0 "false"
-                echo ""
-                sleep "$interval"
-            done
-            
-            trap - SIGINT
+            run_continuous_monitor "Ping" "$target" "" "$interval"
             ;;
         
         2)
@@ -765,39 +737,8 @@ while true; do
             
             clear
             show_header "TCP PORT TEST - ${target}:${port}"
-            echo -e "  ${YELLOW}Press Ctrl+C to stop and return to menu${NC}"
-            echo ""
             
-            write_log "TCP port test started: ${target}:${port}"
-            total=0
-            failed=0
-            latency_sum=0
-            latency_count=0
-            
-            trap 'write_log "TCP port test stopped"; break' SIGINT
-            
-            while true; do
-                ((total++))
-                check_log_size
-                result=$(test_tcp_port "$target" "$port")
-                if [[ $? -ne 0 ]]; then
-                    ((failed++))
-                else
-                    latency=$(echo "$result" | tail -1)
-                    if [[ "$latency" =~ ^[0-9]+$ ]]; then
-                        latency_sum=$((latency_sum + latency))
-                        ((latency_count++))
-                    fi
-                fi
-                
-                avg=0
-                [[ $latency_count -gt 0 ]] && avg=$((latency_sum / latency_count))
-                show_stats $total $failed $avg "$([[ $latency_count -gt 0 ]] && echo true || echo false)"
-                echo ""
-                sleep "$interval"
-            done
-            
-            trap - SIGINT
+            run_continuous_monitor "TCP" "$target" "$port" "$interval"
             ;;
         
         3)
@@ -810,25 +751,8 @@ while true; do
             
             clear
             show_header "UDP PORT TEST - ${target}:${port}"
-            echo -e "  ${YELLOW}Press Ctrl+C to stop and return to menu${NC}"
-            echo ""
             
-            write_log "UDP port test started: ${target}:${port}"
-            total=0
-            failed=0
-            
-            trap 'write_log "UDP port test stopped"; break' SIGINT
-            
-            while true; do
-                ((total++))
-                check_log_size
-                test_udp_port "$target" "$port" || ((failed++))
-                show_stats $total $failed 0 "false"
-                echo ""
-                sleep "$interval"
-            done
-            
-            trap - SIGINT
+            run_continuous_monitor "UDP" "$target" "$port" "$interval"
             ;;
         
         4)
@@ -891,7 +815,7 @@ while true; do
         
         8)
             echo ""
-            read -p "  > Ports to check (comma-separated, e.g., 80,443,22): " ports_input
+            read -p "  > Ports to check (comma-separated): " ports_input
             IFS=',' read -ra ports <<< "$ports_input"
             
             clear
