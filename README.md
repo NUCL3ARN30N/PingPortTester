@@ -1,124 +1,64 @@
 # PingPortTester
 
-Network connectivity testing tool for Windows and Linux/macOS.
+![GitHub stars](https://img.shields.io/github/stars/NUCL3ARN30N/PingPortTester?style=for-the-badge)
+![GitHub forks](https://img.shields.io/github/forks/NUCL3ARN30N/PingPortTester?style=for-the-badge)
+![GitHub issues](https://img.shields.io/github/issues/NUCL3ARN30N/PingPortTester?style=for-the-badge)
+![GitHub license](https://img.shields.io/github/license/NUCL3ARN30N/PingPortTester?style=for-the-badge)
 
-## Usage
+![PowerShell](https://img.shields.io/badge/PowerShell-5391FE?style=for-the-badge&logo=powershell&logoColor=white)
+![Bash](https://img.shields.io/badge/Bash-4EAA25?style=for-the-badge&logo=gnubash&logoColor=white)
+![Windows](https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)
+![Linux](https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)
+![macOS](https://img.shields.io/badge/macOS-000000?style=for-the-badge&logo=apple&logoColor=white)
 
-### Windows (PowerShell)
+> Network connectivity testing tool for Windows, Linux & macOS
 
+## Quick Start
+
+**Windows (PowerShell)**
 ```powershell
 iex (irm ppt.genius-space.org/PingPortTester.ps1)
 ```
 
-### Linux / macOS (Bash)
-
+**Linux / macOS**
 ```bash
 curl -sSL ppt.genius-space.org/PingPortTester.sh | bash
 ```
 
-## Modes
+## Features
 
-### 1 - ICMP Ping
+| # | Mode | Description |
+|:-:|------|-------------|
+| 1 | ICMP Ping | Continuous ping monitoring |
+| 2 | TCP Port Test | Test port with latency |
+| 3 | UDP Port Test | Test UDP connectivity |
+| 4 | Port Range Scan | Scan TCP/UDP port ranges |
+| 5 | Traceroute | Trace network path |
+| 6 | DNS Lookup | Query multiple DNS servers |
+| 7 | Bandwidth Test | Download speed test |
+| 8 | External Port Check | Check ports from internet |
+| 9 | Local Blocked Ports | Check firewall rules |
+| 10 | SMTP Email Test | Send test email |
+| 11 | Public IP Info | Show IP & location |
 
-Continuous ping monitoring to a target host. Logs dropped packets with timestamps.
+## Controls
 
-### 2 - TCP Port Test
-
-Tests if a specific TCP port is open on a remote host. Measures connection latency in milliseconds.
-
-### 3 - UDP Port Test
-
-Tests UDP port connectivity. Useful for DNS, DHCP, NTP, SNMP, and gaming services.
-
-### 4 - Port Range Scan
-
-Scans a range of ports on a target host. Supports TCP and UDP protocols. Identifies common services.
-
-### 5 - Traceroute
-
-Traces the network path to a destination. Shows each hop with IP address and round-trip time.
-
-### 6 - DNS Lookup
-
-Queries DNS records from multiple servers (System Default, Google, Cloudflare, OpenDNS). Shows A, MX, and NS records.
-
-### 7 - Bandwidth Test
-
-Tests download speed using Cloudflare speed test servers (10 MB, 25 MB, or 100 MB).
-
-### 8 - External Port Check
-
-Checks if your ports are reachable from the internet. Useful for verifying port forwarding.
-
-### 9 - Local Blocked Ports Check
-
-Checks firewall rules and listening services for specified ports.
-
-- Windows: Checks Windows Firewall rules
-- Linux: Checks iptables and UFW rules
-
-### 10 - SMTP Email Test
-
-Sends a test email via SMTP to verify email server connectivity.
-
-Configuration options:
-- SMTP Server
-- Port (25, 465, 587)
-- Encryption (None, SSL/TLS, STARTTLS)
-- Authentication (username/password)
-- From/To addresses
-
-Common SMTP Servers:
-
-| Provider | Server | Port | Encryption |
-|----------|--------|------|------------|
-| Gmail | smtp.gmail.com | 587 | STARTTLS |
-| Office 365 | smtp.office365.com | 587 | STARTTLS |
-| Outlook | smtp-mail.outlook.com | 587 | STARTTLS |
-
-### 11 - Public IP Info
-
-Shows your public IP address with detailed location and network information:
-
-- IP Address (IPv4 and IPv6)
-- City, Region, Country
-- Coordinates
-- Postal Code
-- Timezone
-- ISP/Organization
-- Hostname
-
-## Common Ports Reference
-
-| Port | Service |
-|------|---------|
-| 21 | FTP |
-| 22 | SSH |
-| 25 | SMTP |
-| 53 | DNS |
-| 80 | HTTP |
-| 443 | HTTPS |
-| 465 | SMTPS |
-| 587 | SMTP (submission) |
+- **Continuous modes (1-3):** Press `Q` to stop and return to menu
+- **One-time modes (4-11):** Press `Enter` to return to menu  
+- **Exit:** Select `0` from menu
 
 ## Logging
 
-- Log file: ./NetworkTest.log
-- Auto-archives when log exceeds 20 MB
+- Auto-saves to `./NetworkTest.log`
+- Auto-archives at 20MB
 
 ## Requirements
 
-### Windows
+**Windows:** PowerShell 5.1+  
+**Linux/macOS:** bash, curl, bc, nc (netcat)
 
-- PowerShell 5.1 or higher
-- Administrator rights for firewall checks (Mode 9)
+---
 
-### Linux
-
-- Bash 4.0 or higher
-- curl
-- bc
-- ss or netstat
-- nc/netcat (for UDP tests)
-- swaks (optional, for SMTP tests)
-- sudo rights for firewall checks (Mode 9)
+<p align="center">
+  <sub>Badges from <a href="https://github.com/envoy1084/awesome-badges">envoy1084/awesome-badges</a></sub>
+</p>
