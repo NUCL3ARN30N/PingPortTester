@@ -19,6 +19,7 @@ $Magenta = "DarkMagenta"
 $MaxLogSizeMB = 20
 $MaxLogSizeBytes = $MaxLogSizeMB * 1MB
 $LogPath = ".\NetworkTest.log"
+$script:ReturnToMenu = $false
 
 function Show-Header {
     param([string]$Title)
@@ -53,7 +54,6 @@ function Test-LogSize {
     }
 }
 
-# Mode 1: ICMP Ping
 function Test-Ping {
     param([string]$Target, [string]$LogFile)
     try {
@@ -73,7 +73,6 @@ function Test-Ping {
     }
 }
 
-# Mode 2: TCP Port Test
 function Test-TCPPort {
     param([string]$Target, [int]$Port, [string]$LogFile)
     try {
@@ -104,7 +103,6 @@ function Test-TCPPort {
     }
 }
 
-# Mode 3: UDP Port Test
 function Test-UDPPort {
     param([string]$Target, [int]$Port, [string]$LogFile)
     try {
@@ -139,7 +137,6 @@ function Test-UDPPort {
     }
 }
 
-# Mode 4: Port Range Scan
 function Invoke-PortScan {
     param([string]$Target, [int]$StartPort, [int]$EndPort, [string]$Protocol, [string]$LogFile)
     
@@ -196,7 +193,6 @@ function Invoke-PortScan {
     Write-LogEntry -Message "Port scan completed" -FilePath $LogFile
 }
 
-# Mode 5: Traceroute
 function Invoke-Traceroute {
     param([string]$Target, [int]$MaxHops, [string]$LogFile)
     
@@ -237,7 +233,6 @@ function Invoke-Traceroute {
     Write-LogEntry -Message "Traceroute completed" -FilePath $LogFile
 }
 
-# Mode 6: DNS Lookup
 function Invoke-DNSLookup {
     param([string]$Domain, [string]$LogFile)
     
@@ -310,7 +305,6 @@ function Invoke-DNSLookup {
     Write-LogEntry -Message "DNS Lookup completed" -FilePath $LogFile
 }
 
-# Mode 7: Bandwidth Test
 function Test-Bandwidth {
     param([string]$LogFile)
     
@@ -387,7 +381,6 @@ function Test-Bandwidth {
     Write-LogEntry -Message "Bandwidth test completed" -FilePath $LogFile
 }
 
-# Mode 8: External Port Check
 function Test-ExternalPort {
     param([int[]]$Ports, [string]$LogFile)
     
@@ -434,7 +427,6 @@ function Test-ExternalPort {
     Write-LogEntry -Message "External port check completed" -FilePath $LogFile
 }
 
-# Mode 9: Local Blocked Ports
 function Test-LocalPorts {
     param([int[]]$Ports, [string]$LogFile)
     
@@ -487,7 +479,6 @@ function Test-LocalPorts {
     Write-LogEntry -Message "Local port check completed" -FilePath $LogFile
 }
 
-# Mode 10: SMTP Email Test
 function Send-TestEmail {
     param([string]$LogFile)
     
@@ -580,33 +571,18 @@ function Send-TestEmail {
         
         Write-Host ""
         Write-Host "  [SUCCESS] Email sent successfully!" -ForegroundColor $Green
-        Write-Host ""
-        Write-Host "  Details:" -ForegroundColor $Cyan
-        Write-Host "    Server:     $smtpServer`:$smtpPort" -ForegroundColor $White
-        Write-Host "    Encryption: $encryptionType" -ForegroundColor $White
-        Write-Host "    From:       $fromEmail" -ForegroundColor $White
-        Write-Host "    To:         $toEmail" -ForegroundColor $White
         
         Write-LogEntry -Message "SMTP Test: SUCCESS - Email sent to $toEmail" -FilePath $LogFile
         
     } catch {
         Write-Host ""
         Write-Host "  [FAILED] Could not send email" -ForegroundColor $Red
-        Write-Host ""
         Write-Host "  Error: $($_.Exception.Message)" -ForegroundColor $Red
-        Write-Host ""
-        Write-Host "  Troubleshooting tips:" -ForegroundColor $Yellow
-        Write-Host "    - Verify SMTP server and port are correct" -ForegroundColor $Gray
-        Write-Host "    - Check username and password" -ForegroundColor $Gray
-        Write-Host "    - Gmail: Enable 'Less secure apps' or use App Password" -ForegroundColor $Gray
-        Write-Host "    - Office365: May require App Password with MFA" -ForegroundColor $Gray
-        Write-Host "    - Check if firewall blocks outbound SMTP" -ForegroundColor $Gray
         
         Write-LogEntry -Message "SMTP Test: FAILED - $($_.Exception.Message)" -FilePath $LogFile
     }
 }
 
-# Mode 11: Public IP Check
 function Get-PublicIPInfo {
     param([string]$LogFile)
     
@@ -743,6 +719,64 @@ function Show-Menu {
     return $choice
 }
 
+# Continuous monitoring with key detection
+function Start-ContinuousMonitoring {
+    param(
+        [string]$Mode,
+        [string]$Target,
+        [int]$Port,
+        [int]$Interval,
+        [string]$LogFile
+    )
+    
+    $total = 0
+    $failed = 0
+    $latencies = [System.Collections.ArrayList]@()
+    
+    Write-Host "  Press 'Q' to stop and return to menu" -ForegroundColor $Yellow
+    Write-Host ""
+    
+    Write-LogEntry -Message "$Mode started: $Target$(if($Port){':'+$Port})" -FilePath $LogFile
+    
+    while ($true) {
+        # Check for keypress
+        if ([Console]::KeyAvailable) {
+            $key = [Console]::ReadKey($true)
+            if ($key.Key -eq 'Q') {
+                Write-Host ""
+                Write-Host "  [STOPPED] Returning to menu..." -ForegroundColor $Yellow
+                Write-LogEntry -Message "$Mode stopped" -FilePath $LogFile
+                break
+            }
+        }
+        
+        $total++
+        Test-LogSize -LogFilePath $LogFile
+        
+        switch ($Mode) {
+            "Ping" {
+                if (-not (Test-Ping -Target $Target -LogFile $LogFile)) { $failed++ }
+                Show-Stats -Total $total -Failed $failed -AvgLatency 0 -ShowLatency $false
+            }
+            "TCP" {
+                $result = Test-TCPPort -Target $Target -Port $Port -LogFile $LogFile
+                if (-not $result.Success) { $failed++ }
+                elseif ($result.Latency) { [void]$latencies.Add($result.Latency) }
+                $avg = if ($latencies.Count -gt 0) { ($latencies | Measure-Object -Average).Average } else { 0 }
+                Show-Stats -Total $total -Failed $failed -AvgLatency $avg -ShowLatency ($latencies.Count -gt 0)
+            }
+            "UDP" {
+                $result = Test-UDPPort -Target $Target -Port $Port -LogFile $LogFile
+                if (-not $result.Success) { $failed++ }
+                Show-Stats -Total $total -Failed $failed -AvgLatency 0 -ShowLatency $false
+            }
+        }
+        
+        Write-Host ""
+        Start-Sleep -Seconds $Interval
+    }
+}
+
 # ============================================================================
 # MAIN
 # ============================================================================
@@ -771,24 +805,8 @@ while ($true) {
             
             Clear-Host
             Show-Header "PING MONITORING - $target"
-            Write-Host "  Press Ctrl+C to stop and return to menu" -ForegroundColor $Yellow
-            Write-Host ""
             
-            Write-LogEntry -Message "Ping monitoring started: $target" -FilePath $LogPath
-            $total = 0; $failed = 0
-            
-            try {
-                while ($true) {
-                    $total++
-                    Test-LogSize -LogFilePath $LogPath
-                    if (-not (Test-Ping -Target $target -LogFile $LogPath)) { $failed++ }
-                    Show-Stats -Total $total -Failed $failed -AvgLatency 0 -ShowLatency $false
-                    Write-Host ""
-                    Start-Sleep -Seconds $interval
-                }
-            } catch {
-                Write-LogEntry -Message "Ping monitoring stopped" -FilePath $LogPath
-            }
+            Start-ContinuousMonitoring -Mode "Ping" -Target $target -Port 0 -Interval $interval -LogFile $LogPath
         }
         
         '2' {
@@ -801,28 +819,8 @@ while ($true) {
             
             Clear-Host
             Show-Header "TCP PORT TEST - ${target}:${port}"
-            Write-Host "  Press Ctrl+C to stop and return to menu" -ForegroundColor $Yellow
-            Write-Host ""
             
-            Write-LogEntry -Message "TCP port test started: ${target}:${port}" -FilePath $LogPath
-            $total = 0; $failed = 0; $latencies = @()
-            
-            try {
-                while ($true) {
-                    $total++
-                    Test-LogSize -LogFilePath $LogPath
-                    $result = Test-TCPPort -Target $target -Port $port -LogFile $LogPath
-                    if (-not $result.Success) { $failed++ }
-                    elseif ($result.Latency) { $latencies += $result.Latency }
-                    
-                    $avg = if ($latencies.Count -gt 0) { ($latencies | Measure-Object -Average).Average } else { 0 }
-                    Show-Stats -Total $total -Failed $failed -AvgLatency $avg -ShowLatency ($latencies.Count -gt 0)
-                    Write-Host ""
-                    Start-Sleep -Seconds $interval
-                }
-            } catch {
-                Write-LogEntry -Message "TCP port test stopped" -FilePath $LogPath
-            }
+            Start-ContinuousMonitoring -Mode "TCP" -Target $target -Port $port -Interval $interval -LogFile $LogPath
         }
         
         '3' {
@@ -835,25 +833,8 @@ while ($true) {
             
             Clear-Host
             Show-Header "UDP PORT TEST - ${target}:${port}"
-            Write-Host "  Press Ctrl+C to stop and return to menu" -ForegroundColor $Yellow
-            Write-Host ""
             
-            Write-LogEntry -Message "UDP port test started: ${target}:${port}" -FilePath $LogPath
-            $total = 0; $failed = 0
-            
-            try {
-                while ($true) {
-                    $total++
-                    Test-LogSize -LogFilePath $LogPath
-                    $result = Test-UDPPort -Target $target -Port $port -LogFile $LogPath
-                    if (-not $result.Success) { $failed++ }
-                    Show-Stats -Total $total -Failed $failed -AvgLatency 0 -ShowLatency $false
-                    Write-Host ""
-                    Start-Sleep -Seconds $interval
-                }
-            } catch {
-                Write-LogEntry -Message "UDP port test stopped" -FilePath $LogPath
-            }
+            Start-ContinuousMonitoring -Mode "UDP" -Target $target -Port $port -Interval $interval -LogFile $LogPath
         }
         
         '4' {
